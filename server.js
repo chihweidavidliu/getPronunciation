@@ -18,36 +18,43 @@ app.listen(port, () => {
   console.log(`Listening to port ${port}`);
 });
 
-//homepage
-app.get("/", (req, res) => {
-  res.redirect("/getPronunciation.html");
-})
 
 app.post("/addURL", urlencodedParser, (req, res) => {
 
-
-  let url = req.body.url;
-  let text = req.body.text;
+  let data = JSON.parse(req.body.data);
   let folderName = req.body.folderName;
-  let index = req.body.index;
 
-  // let urlArray = [];
-  // urlArray.push(url);
-  // console.log(urlArray);
-
-  // check directory exists for the subject, if not, make one
   if (!fs.existsSync(`./${folderName}`)){
-    fs.mkdirSync(`./${folderName}`);
-  }
+        fs.mkdirSync(`./${folderName}`);
+      }
 
-  rp
-  .get(url)
-  .on('response', function(response)
-  {
-      console.log(`Saving word: ${text} in folder: ${folderName}`);
+
+  data.forEach(word => {
+    let id = word[1];
+    let text = word[0];
+    let index = data.indexOf(word) + 1;
+
+    rp(`https://api.soundoftext.com/sounds/${id}`, { json: true }, (err, res, body) => {
+      if (err) { return console.log(err); }
+
+      let url = body.location;
+
+      if(!url) {
+        console.log(`URL for ${text} is missing`)
+      }
+
+
+      rp(url, (err, res, body) => {
+        if (err) { return console.log(err); }
+        console.log(`Saving word: ${text} in folder: ${folderName}`);
+
+
+      })
+      .pipe(fs.createWriteStream(`./${folderName}/${index}-${text}.mp3`));
+
+    });
   })
-  .pipe(fs.createWriteStream(`./${folderName}/${index}-${text}.mp3`));
 
-  res.send()
+  res.send();
 
 })
